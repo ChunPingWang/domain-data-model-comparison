@@ -23,9 +23,10 @@
 - [效能成本模型](#效能成本模型)
 - [DDD 代價最大的場景 Top 5](#ddd-代價最大的場景-top-5)
 - [決策矩陣與建議](#決策矩陣與建議)
+- [決策流程圖](#決策流程圖)
 - [如何執行](#如何執行)
 - [專案結構](#專案結構)
-- [決策流程圖](#決策流程圖)
+- [結語](#結語)
 - [術語表 (Glossary)](#術語表-glossary)
 
 ---
@@ -411,10 +412,10 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant Test as 測試程式
-    participant DddJpa as 方案 1<br/>DDD + JPA
-    participant DddJdbc as 方案 2<br/>DDD + JDBC
-    participant TradJpa as 方案 3<br/>傳統 + JPA
-    participant TradJdbc as 方案 4<br/>傳統 + JDBC
+    participant DddJpa as 方案1 DDD+JPA
+    participant DddJdbc as 方案2 DDD+JDBC
+    participant TradJpa as 方案3 傳統+JPA
+    participant TradJdbc as 方案4 傳統+JDBC
     participant DB as PostgreSQL
 
     Note over Test,DB: 寫入 1 筆 Order + N 筆 LineItems
@@ -471,10 +472,10 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Test as 測試程式
-    participant DddJpa as 方案 1<br/>DDD + JPA
-    participant DddJdbc as 方案 2<br/>DDD + JDBC
-    participant TradJpa as 方案 3<br/>傳統 + JPA
-    participant TradJdbc as 方案 4<br/>傳統 + JDBC
+    participant DddJpa as 方案1 DDD+JPA
+    participant DddJdbc as 方案2 DDD+JDBC
+    participant TradJpa as 方案3 傳統+JPA
+    participant TradJdbc as 方案4 傳統+JDBC
     participant DB as PostgreSQL
 
     Note over Test,DB: 讀取 1 筆 Order + 200 筆 LineItems
@@ -482,12 +483,12 @@ sequenceDiagram
     rect rgb(227, 242, 253)
         Note right of DddJpa: 方案 1: JOIN FETCH (1 SQL，但結果集大)
         Test->>DddJpa: findById(id)
-        DddJpa->>DB: SELECT o FROM JpaOrderEntity o<br/>LEFT JOIN FETCH o.lineItems<br/>WHERE o.id = :id
+        DddJpa->>DB: SELECT o JOIN FETCH o.lineItems WHERE o.id = :id
         Note right of DB: 1 SQL，結果集 200 rows
         DB-->>DddJpa: ResultSet (200 rows)
         DddJpa->>DddJpa: Hibernate 映射為 Entity 物件
         DddJpa->>DddJpa: toDomain() 轉換為 Domain Model
-        DddJpa-->>Test: Optional&lt;Order&gt;
+        DddJpa-->>Test: Optional[Order]
     end
 
     rect rgb(232, 245, 233)
@@ -495,10 +496,10 @@ sequenceDiagram
         Test->>DddJdbc: findById(id)
         DddJdbc->>DB: SELECT * FROM orders WHERE id = ?
         DB-->>DddJdbc: 1 row
-        DddJdbc->>DB: SELECT * FROM order_line_items<br/>WHERE order_id = ?
+        DddJdbc->>DB: SELECT * FROM order_line_items WHERE order_id = ?
         DB-->>DddJdbc: 200 rows
         DddJdbc->>DddJdbc: Order.reconstitute() 手動組裝
-        DddJdbc-->>Test: Optional&lt;Order&gt;
+        DddJdbc-->>Test: Optional[Order]
     end
 
     rect rgb(255, 243, 224)
@@ -506,8 +507,8 @@ sequenceDiagram
         Test->>TradJpa: findOrderWithItems(orderId)
         TradJpa->>DB: SELECT FROM trad_orders WHERE id = ?
         DB-->>TradJpa: TraditionalJpaOrder
-        TradJpa->>DB: SELECT FROM trad_order_line_items<br/>WHERE order_id = ?
-        DB-->>TradJpa: List&lt;TraditionalJpaLineItem&gt;
+        TradJpa->>DB: SELECT FROM trad_order_line_items WHERE order_id = ?
+        DB-->>TradJpa: List[TraditionalJpaLineItem]
         TradJpa-->>Test: OrderWithItems
     end
 
@@ -516,8 +517,8 @@ sequenceDiagram
         Test->>TradJdbc: findOrderWithItems(orderId)
         TradJdbc->>DB: SELECT * FROM jdbc_orders WHERE id = ?
         DB-->>TradJdbc: Map
-        TradJdbc->>DB: SELECT * FROM jdbc_order_line_items<br/>WHERE order_id = ?
-        DB-->>TradJdbc: List&lt;Map&gt;
+        TradJdbc->>DB: SELECT * FROM jdbc_order_line_items WHERE order_id = ?
+        DB-->>TradJdbc: List[Map]
         TradJdbc-->>Test: OrderWithItems
     end
 ```
@@ -527,22 +528,22 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Test as 測試程式
-    participant DddJpa as 方案 1<br/>DDD + JPA
-    participant DddJdbc as 方案 2<br/>DDD + JDBC
-    participant TradJpa as 方案 3<br/>傳統 + JPA
-    participant TradJdbc as 方案 4<br/>傳統 + JDBC
+    participant DddJpa as 方案1 DDD+JPA
+    participant DddJdbc as 方案2 DDD+JDBC
+    participant TradJpa as 方案3 傳統+JPA
+    participant TradJdbc as 方案4 傳統+JDBC
     participant DB as PostgreSQL
 
-    Note over Test,DB: 只需要 Order 表頭資訊（不需要 LineItems）<br/>但 DDD 被迫載入完整 Aggregate
+    Note over Test,DB: 只需要 Order 表頭（不需要 LineItems），但 DDD 被迫載入完整 Aggregate
 
     rect rgb(255, 205, 210)
         Note right of DddJpa: 方案 1: 被迫載入 200 筆 LineItems!
         Test->>DddJpa: findById(id)
-        DddJpa->>DB: SELECT o JOIN FETCH o.lineItems<br/>WHERE o.id = :id
-        Note right of DB: 回傳 200 rows<br/>(其實只需要 1 row!)
+        DddJpa->>DB: SELECT o JOIN FETCH o.lineItems WHERE o.id = :id
+        Note right of DB: 回傳 200 rows（其實只需要 1 row!）
         DB-->>DddJpa: ResultSet (200 rows)
         DddJpa->>DddJpa: 映射 200 個 Entity 物件 (浪費!)
-        DddJpa-->>Test: Optional&lt;Order&gt; (只用 order.getStatus())
+        DddJpa-->>Test: Optional[Order] (只用 order.getStatus())
     end
 
     rect rgb(255, 205, 210)
@@ -551,7 +552,7 @@ sequenceDiagram
         DddJdbc->>DB: SELECT orders + SELECT line_items
         Note right of DB: 2 SQL，仍然載入全部
         DB-->>DddJdbc: 1 + 200 rows
-        DddJdbc-->>Test: Optional&lt;Order&gt;
+        DddJdbc-->>Test: Optional[Order]
     end
 
     rect rgb(200, 230, 201)
@@ -579,13 +580,13 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Test as 測試程式
-    participant DddJpa as 方案 1<br/>DDD + JPA
-    participant DddJdbc as 方案 2<br/>DDD + JDBC
-    participant TradJpa as 方案 3<br/>傳統 + JPA
-    participant TradJdbc as 方案 4<br/>傳統 + JDBC
+    participant DddJpa as 方案1 DDD+JPA
+    participant DddJdbc as 方案2 DDD+JDBC
+    participant TradJpa as 方案3 傳統+JPA
+    participant TradJdbc as 方案4 傳統+JDBC
     participant DB as PostgreSQL
 
-    Note over Test,DB: 只需要將 status 從 DRAFT 改為 SUBMITTED<br/>Aggregate 有 200 筆 LineItems
+    Note over Test,DB: 只需要將 status 從 DRAFT 改為 SUBMITTED，Aggregate 有 200 筆 LineItems
 
     rect rgb(255, 205, 210)
         Note right of DddJpa: 方案 1: 載入 200 items → 改 1 欄位 → 儲存 201 rows
@@ -623,7 +624,7 @@ sequenceDiagram
     rect rgb(200, 230, 201)
         Note right of TradJdbc: 方案 4: 直接 1 SQL 搞定
         Test->>TradJdbc: updateOrderStatus(orderId, "SUBMITTED")
-        TradJdbc->>DB: UPDATE jdbc_orders<br/>SET status = ?, updated_at = ?<br/>WHERE id = ?
+        TradJdbc->>DB: UPDATE jdbc_orders SET status=?, updated_at=? WHERE id=?
         Note right of DB: 1 SQL，完成!
         TradJdbc-->>Test: void
     end
@@ -1236,6 +1237,45 @@ public void cancelAllDraftOrders() {
 
 ---
 
+## 決策流程圖
+
+以下流程圖可以幫助團隊在專案初期快速判斷應該使用哪種持久化策略：
+
+```mermaid
+flowchart TD
+    Start(["開始：選擇持久化策略"]) --> Q1{"你的業務有跨 Entity<br/>的一致性規則嗎？<br/>(如 totalAmount = Σ subtotals)"}
+
+    Q1 -->|"沒有，各 Entity 獨立"| Q2{"效能要求高嗎？<br/>(高吞吐、大量批次)"}
+    Q1 -->|"有，需要保護 Invariant"| Q3{"Aggregate 平均大小？<br/>(子實體數量)"}
+
+    Q2 -->|"一般"| R_TradJpa["方案 3: 傳統 + JPA<br/><br/>理由：<br/>- JPA 方便開發<br/>- 無 Aggregate 開銷<br/>- 適合一般 CRUD"]
+    Q2 -->|"很高"| R_TradJdbc["方案 4: 傳統 + JDBC<br/><br/>理由：<br/>- 最低框架開銷<br/>- batchUpdate 吞吐最佳<br/>- 完全掌控 SQL"]
+
+    Q3 -->|"小型 (< 20 子實體)"| Q4{"團隊對 JPA 熟悉度？"}
+    Q3 -->|"中大型 (>= 20 子實體)"| R_DddJdbc["方案 2: DDD + JDBC<br/><br/>理由：<br/>- Aggregate 保護一致性<br/>- JDBC 避免 dirty checking<br/>- batch insert 效能好"]
+
+    Q4 -->|"很熟悉"| R_DddJpa["方案 1: DDD + JPA<br/><br/>理由：<br/>- Hibernate 自動管理<br/>- orphanRemoval 方便<br/>- 小 Aggregate 開銷可接受"]
+    Q4 -->|"不太熟悉"| R_DddJdbc
+
+    R_TradJpa --> Q5{"需要複雜查詢嗎？<br/>(列表、報表、搜尋)"}
+    R_TradJdbc --> Q5
+    R_DddJpa --> Q5
+    R_DddJdbc --> Q5
+
+    Q5 -->|"需要"| R_CQRS["追加 CQRS Read Model<br/><br/>Command Side 用選定方案<br/>Query Side 用獨立 SQL/View<br/>不受 Aggregate 邊界約束"]
+    Q5 -->|"不需要"| R_Done(["使用選定方案即可"])
+
+    style Start fill:#f5f5f5,stroke:#333
+    style R_TradJpa fill:#c8e6c9,stroke:#388e3c
+    style R_TradJdbc fill:#c8e6c9,stroke:#388e3c
+    style R_DddJpa fill:#bbdefb,stroke:#1976d2
+    style R_DddJdbc fill:#bbdefb,stroke:#1976d2
+    style R_CQRS fill:#fff3e0,stroke:#ef6c00
+    style R_Done fill:#f5f5f5,stroke:#333
+```
+
+---
+
 ## 如何執行
 
 ### 前置條件
@@ -1353,45 +1393,6 @@ ddd-repository-poc/
 
 ---
 
-## 決策流程圖
-
-以下流程圖可以幫助團隊在專案初期快速判斷應該使用哪種持久化策略：
-
-```mermaid
-flowchart TD
-    Start(["開始：選擇持久化策略"]) --> Q1{"你的業務有跨 Entity<br/>的一致性規則嗎？<br/>(如 totalAmount = Σ subtotals)"}
-
-    Q1 -->|"沒有，各 Entity 獨立"| Q2{"效能要求高嗎？<br/>(高吞吐、大量批次)"}
-    Q1 -->|"有，需要保護 Invariant"| Q3{"Aggregate 平均大小？<br/>(子實體數量)"}
-
-    Q2 -->|"一般"| R_TradJpa["方案 3: 傳統 + JPA<br/><br/>理由：<br/>- JPA 方便開發<br/>- 無 Aggregate 開銷<br/>- 適合一般 CRUD"]
-    Q2 -->|"很高"| R_TradJdbc["方案 4: 傳統 + JDBC<br/><br/>理由：<br/>- 最低框架開銷<br/>- batchUpdate 吞吐最佳<br/>- 完全掌控 SQL"]
-
-    Q3 -->|"小型 (< 20 子實體)"| Q4{"團隊對 JPA 熟悉度？"}
-    Q3 -->|"中大型 (>= 20 子實體)"| R_DddJdbc["方案 2: DDD + JDBC<br/><br/>理由：<br/>- Aggregate 保護一致性<br/>- JDBC 避免 dirty checking<br/>- batch insert 效能好"]
-
-    Q4 -->|"很熟悉"| R_DddJpa["方案 1: DDD + JPA<br/><br/>理由：<br/>- Hibernate 自動管理<br/>- orphanRemoval 方便<br/>- 小 Aggregate 開銷可接受"]
-    Q4 -->|"不太熟悉"| R_DddJdbc
-
-    R_TradJpa --> Q5{"需要複雜查詢嗎？<br/>(列表、報表、搜尋)"}
-    R_TradJdbc --> Q5
-    R_DddJpa --> Q5
-    R_DddJdbc --> Q5
-
-    Q5 -->|"需要"| R_CQRS["追加 CQRS Read Model<br/><br/>Command Side 用選定方案<br/>Query Side 用獨立 SQL/View<br/>不受 Aggregate 邊界約束"]
-    Q5 -->|"不需要"| R_Done(["使用選定方案即可"])
-
-    style Start fill:#f5f5f5,stroke:#333
-    style R_TradJpa fill:#c8e6c9,stroke:#388e3c
-    style R_TradJdbc fill:#c8e6c9,stroke:#388e3c
-    style R_DddJpa fill:#bbdefb,stroke:#1976d2
-    style R_DddJdbc fill:#bbdefb,stroke:#1976d2
-    style R_CQRS fill:#fff3e0,stroke:#ef6c00
-    style R_Done fill:#f5f5f5,stroke:#333
-```
-
----
-
 ## 結語
 
 本 PoC 透過 17 個場景的完整測試，得到以下核心結論：
@@ -1406,7 +1407,7 @@ flowchart TD
 
 5. **批次操作是 DDD 的最大弱點。** 場景 M 的批次狀態更新，DDD+JDBC 需要逐個載入修改，而傳統只需 1 SQL。
 
-5. **選擇的關鍵在於：你的業務複雜度是否值得 DDD 的代價。** 如果 Invariant 簡單、團隊小、場景單純，傳統方案更高效。如果 Invariant 複雜、團隊大、修改頻繁，DDD 的防錯能力會在長期回報。
+6. **選擇的關鍵在於：你的業務複雜度是否值得 DDD 的代價。** 如果 Invariant 簡單、團隊小、場景單純，傳統方案更高效。如果 Invariant 複雜、團隊大、修改頻繁，DDD 的防錯能力會在長期回報。
 
 ---
 
